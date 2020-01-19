@@ -1,0 +1,146 @@
+From 9ec41a6eb6fed6ff86ae37de7bac248ac4005d10 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Tue, 28 Jun 2016 16:36:46 +0200
+Subject: [PATCH] connectivity-monitor: Revert GNetworkMonitor usage for
+ compatibility
+
+GNetworkMonitor:network-available is FALSE if there is a physical
+connection but no default IPv4 or IPv6 route. This prevents us from
+connecting to servers on the local network without a being connected to
+wider network.
+
+Let's revert back to the earlier behaviour where any kind of
+connection, even if purely local, was considered enough.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1345877
+---
+ src/connectivity-monitor.c | 64 +++++-----------------------------------------
+ 1 file changed, 7 insertions(+), 57 deletions(-)
+
+diff --git a/src/connectivity-monitor.c b/src/connectivity-monitor.c
+index 8b3d3856ebcb..f4222c31a956 100644
+--- a/src/connectivity-monitor.c
++++ b/src/connectivity-monitor.c
+@@ -74,18 +74,16 @@ typedef enum {
+     /* Set if the device is not suspended; clear if it is suspending
+      * (or suspended, but we don't get scheduled then). */
+     CONNECTIVITY_AWAKE = (1 << 0),
+-    /* Set if GNetworkMonitor says we're up. */
++    /* Set if NetworkManager says we're up. */
+     CONNECTIVITY_UP = (1 << 1),
+     /* Clear if NetworkManager says we're in a shaky state like
+-     * disconnecting (the GNetworkMonitor can't tell this). Set otherwise. */
++     * disconnecting. Set otherwise. */
+     CONNECTIVITY_STABLE = (1 << 2),
+     /* Set if the device is not shutting down, clear if it is. */
+     CONNECTIVITY_RUNNING = (1 << 3)
+ } Connectivity;
+ 
+ struct _McdConnectivityMonitorPrivate {
+-  GNetworkMonitor *network_monitor;
+-
+   GDBusConnection *system_bus;
+   guint login1_prepare_for_sleep_id;
+   guint login1_prepare_for_shutdown_id;
+@@ -213,57 +211,24 @@ connectivity_monitor_nm_state_change_cb (NMClient *client,
+ #if NM_CHECK_VERSION(0,8,992)
+       || state == NM_STATE_DISCONNECTING
+ #endif
+-      || state == NM_STATE_ASLEEP)
+-    {
+-      DEBUG ("New NetworkManager network state %d (unstable state)", state);
+-
+-      connectivity_monitor_remove_states (connectivity_monitor,
+-          CONNECTIVITY_STABLE, NULL);
+-    }
+-  else if (state == NM_STATE_DISCONNECTED)
++      || state == NM_STATE_ASLEEP
++      || state == NM_STATE_DISCONNECTED)
+     {
+-      DEBUG ("New NetworkManager network state %d (disconnected)", state);
++      DEBUG ("New NetworkManager network state %d (unstable or disconnected state)", state);
+ 
+       connectivity_monitor_remove_states (connectivity_monitor,
+           CONNECTIVITY_UP|CONNECTIVITY_STABLE, NULL);
+     }
+   else
+     {
++
+       DEBUG ("New NetworkManager network state %d (stable state)", state);
+       connectivity_monitor_add_states (connectivity_monitor,
+-          CONNECTIVITY_STABLE, NULL);
++          CONNECTIVITY_UP|CONNECTIVITY_STABLE, NULL);
+     }
+ }
+ #endif
+ 
+-static void
+-connectivity_monitor_network_changed (GNetworkMonitor *monitor,
+-    gboolean available,
+-    McdConnectivityMonitor *connectivity_monitor)
+-{
+-  McdConnectivityMonitorPrivate *priv;
+-
+-  priv = connectivity_monitor->priv;
+-
+-  if (!priv->use_conn)
+-    return;
+-
+-  if (available)
+-    {
+-      DEBUG ("GNetworkMonitor (%s) says we are at least partially online",
+-          G_OBJECT_TYPE_NAME (monitor));
+-      connectivity_monitor_add_states (connectivity_monitor, CONNECTIVITY_UP,
+-          NULL);
+-    }
+-  else
+-    {
+-      DEBUG ("GNetworkMonitor (%s) says we are offline",
+-          G_OBJECT_TYPE_NAME (monitor));
+-      connectivity_monitor_remove_states (connectivity_monitor,
+-          CONNECTIVITY_UP, NULL);
+-    }
+-}
+-
+ #ifdef HAVE_UPOWER
+ static void
+ connectivity_monitor_set_awake (
+@@ -515,15 +480,6 @@ mcd_connectivity_monitor_init (McdConnectivityMonitor *connectivity_monitor)
+   priv->connectivity = CONNECTIVITY_AWAKE | CONNECTIVITY_STABLE |
+     CONNECTIVITY_UP | CONNECTIVITY_RUNNING;
+ 
+-  priv->network_monitor = g_network_monitor_get_default ();
+-
+-  tp_g_signal_connect_object (priv->network_monitor, "network-changed",
+-      G_CALLBACK (connectivity_monitor_network_changed),
+-      connectivity_monitor, 0);
+-  connectivity_monitor_network_changed (priv->network_monitor,
+-      g_network_monitor_get_network_available (priv->network_monitor),
+-      connectivity_monitor);
+-
+ #ifdef ENABLE_CONN_SETTING
+   priv->settings = g_settings_new ("im.telepathy.MissionControl.FromEmpathy");
+   /* We'll call g_settings_bind() in constructed because default values of
+@@ -614,8 +570,6 @@ connectivity_monitor_dispose (GObject *object)
+ {
+   McdConnectivityMonitor *self = MCD_CONNECTIVITY_MONITOR (object);
+ 
+-  g_clear_object (&self->priv->network_monitor);
+-
+ #ifdef ENABLE_CONN_SETTING
+   g_clear_object (&self->priv->settings);
+ #endif
+@@ -769,10 +723,6 @@ mcd_connectivity_monitor_set_use_conn (McdConnectivityMonitor *connectivity_moni
+ #if defined(HAVE_NM)
+       connectivity_monitor_nm_state_change_cb (priv->nm_client, NULL, connectivity_monitor);
+ #endif
+-
+-      connectivity_monitor_network_changed (priv->network_monitor,
+-          g_network_monitor_get_network_available (priv->network_monitor),
+-          connectivity_monitor);
+     }
+   else
+     {
+-- 
+2.5.5
+

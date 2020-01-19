@@ -2,7 +2,7 @@
 
 Name:           telepathy-mission-control
 Version:        5.16.3
-Release:        2%{?dist}
+Release:        3%{?dist}
 Epoch:          1
 Summary:        Central control for Telepathy connection manager
 
@@ -25,6 +25,9 @@ Patch8:         %{name}-tests-disable-vanishing-client.patch
 ## upstream patches
 # fix failing avatar test, https://bugs.freedesktop.org/show_bug.cgi?id=71001
 Patch0049: 0049-account-manager-avatar.py-fix-race-condition-by-comb.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=1345877
+Patch100:        %{name}-revert-gnetworkmonitor-usage.patch
 
 BuildRequires:  chrpath
 BuildRequires:  dbus-python
@@ -71,6 +74,7 @@ files for developing applications that use %{name}.
 %patch7 -p1
 %patch8 -p1
 %patch0049 -p1 -b .0049
+%patch100 -p1 -b .gnetworkmonitor
 
 
 %build
@@ -127,6 +131,10 @@ fi
 
 
 %changelog
+* Tue Jun 28 2016 Debarshi Ray <rishi@fedoraproject.org> - 1:5.16.3-3
+- Revert GNetworkMonitor usage for compatibility
+- Resolves: #1345877
+
 * Wed May 13 2015 Debarshi Ray <rishi@fedoraproject.org> - 1:5.16.3-2
 - Rebuild for upower soname bump
 - Resolves: #1174525
