@@ -1,0 +1,9 @@
+diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/dispatcher/vanishing-client.py telepathy-mission-control-5.14.1/tests/twisted/dispatcher/vanishing-client.py
+--- telepathy-mission-control-5.14.1.orig/tests/twisted/dispatcher/vanishing-client.py	2013-09-20 17:18:57.681664250 +0200
++++ telepathy-mission-control-5.14.1/tests/twisted/dispatcher/vanishing-client.py	2013-09-20 17:35:25.261031543 +0200
+@@ -108,4 +108,5 @@ def test(q, bus, mc):
+     sync_dbus(bus, q, account)
+ 
+ if __name__ == '__main__':
++    raise SystemExit(77)
+     exec_test(test, {})

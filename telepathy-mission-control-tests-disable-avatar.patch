@@ -1,0 +1,9 @@
+diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/avatar.py telepathy-mission-control-5.14.1/tests/twisted/account-manager/avatar.py
+--- telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/avatar.py	2013-09-20 17:18:57.684664257 +0200
++++ telepathy-mission-control-5.14.1/tests/twisted/account-manager/avatar.py	2013-09-20 18:18:38.348262898 +0200
+@@ -130,4 +130,5 @@ def test(q, bus, mc):
+     assertEquals('', ''.join(open(avatar_filename, 'r').readlines()))
+ 
+ if __name__ == '__main__':
++    raise SystemExit(77)
+     exec_test(test, {})

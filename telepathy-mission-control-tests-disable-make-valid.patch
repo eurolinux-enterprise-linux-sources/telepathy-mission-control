@@ -1,0 +1,10 @@
+diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/make-valid.py telepathy-mission-control-5.14.1/tests/twisted/account-manager/make-valid.py
+--- telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/make-valid.py	2013-09-20 17:18:57.684664257 +0200
++++ telepathy-mission-control-5.14.1/tests/twisted/account-manager/make-valid.py	2013-09-20 17:19:31.406744236 +0200
+@@ -230,5 +230,6 @@ def test(q, bus, unused):
+             'busy', 'Talking to Illuminati')
+ 
+ if __name__ == '__main__':
++    raise SystemExit(77)
+     preseed()
+     exec_test(test, {}, preload_mc=False)

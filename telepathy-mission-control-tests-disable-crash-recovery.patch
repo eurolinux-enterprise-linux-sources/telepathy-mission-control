@@ -1,0 +1,10 @@
+diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/crash-recovery/crash-recovery.py telepathy-mission-control-5.14.1/tests/twisted/crash-recovery/crash-recovery.py
+--- telepathy-mission-control-5.14.1.orig/tests/twisted/crash-recovery/crash-recovery.py	2013-09-20 17:18:57.678664243 +0200
++++ telepathy-mission-control-5.14.1/tests/twisted/crash-recovery/crash-recovery.py	2013-09-20 17:44:08.460561578 +0200
+@@ -124,5 +124,6 @@ def test(q, bus, unused):
+     q.dbus_return(e.message, signature='')
+ 
+ if __name__ == '__main__':
++    raise SystemExit(77)
+     preseed()
+     exec_test(test, {}, preload_mc=False)
