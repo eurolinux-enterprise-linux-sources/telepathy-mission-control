@@ -2,7 +2,7 @@
 
 Name:           telepathy-mission-control
 Version:        5.14.1
-Release:        6%{?dist}
+Release:        8%{?dist}
 Epoch:          1
 Summary:        Central control for Telepathy connection manager
 
@@ -125,6 +125,12 @@ fi
 
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1:5.14.1-8
+- Mass rebuild 2014-01-24
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 1:5.14.1-7
+- Mass rebuild 2013-12-27
+
 * Wed Oct 16 2013 Debarshi Ray <rishi@fedoraproject.org> - 1:5.14.1-6
 - Remove ancient %%changelog entries, some of which had broken dates (Red Hat
   #884191)
