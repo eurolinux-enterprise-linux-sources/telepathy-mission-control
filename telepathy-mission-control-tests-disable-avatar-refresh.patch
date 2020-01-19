@@ -1,10 +1,10 @@
-diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/avatar-refresh.py telepathy-mission-control-5.14.1/tests/twisted/account-manager/avatar-refresh.py
---- telepathy-mission-control-5.14.1.orig/tests/twisted/account-manager/avatar-refresh.py	2013-09-20 16:48:51.802641510 +0200
-+++ telepathy-mission-control-5.14.1/tests/twisted/account-manager/avatar-refresh.py	2013-09-20 17:08:48.775273136 +0200
-@@ -130,5 +130,6 @@ def test(q, bus, unused):
-     assertEquals('Deus Ex', ''.join(open(avatar_filename, 'r').readlines()))
+diff -urNp telepathy-mission-control-5.16.3.orig/tests/twisted/account-manager/avatar-refresh.py telepathy-mission-control-5.16.3/tests/twisted/account-manager/avatar-refresh.py
+--- telepathy-mission-control-5.16.3.orig/tests/twisted/account-manager/avatar-refresh.py	2015-04-09 18:06:39.019209191 +0200
++++ telepathy-mission-control-5.16.3/tests/twisted/account-manager/avatar-refresh.py	2015-04-09 18:28:26.348002019 +0200
+@@ -368,5 +368,6 @@ def test(q, bus, unused, **kwargs):
+         account.test(q, bus, mc)
  
  if __name__ == '__main__':
 +    raise SystemExit(77)
-     preseed()
-     exec_test(test, {}, preload_mc=False)
+     exec_test(test, {}, preload_mc=False, use_fake_accounts_service=True,
+             pass_kwargs=True)

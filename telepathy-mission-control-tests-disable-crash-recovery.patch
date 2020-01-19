@@ -1,10 +1,10 @@
-diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/crash-recovery/crash-recovery.py telepathy-mission-control-5.14.1/tests/twisted/crash-recovery/crash-recovery.py
---- telepathy-mission-control-5.14.1.orig/tests/twisted/crash-recovery/crash-recovery.py	2013-09-20 17:18:57.678664243 +0200
-+++ telepathy-mission-control-5.14.1/tests/twisted/crash-recovery/crash-recovery.py	2013-09-20 17:44:08.460561578 +0200
-@@ -124,5 +124,6 @@ def test(q, bus, unused):
+diff -urNp telepathy-mission-control-5.16.3.orig/tests/twisted/crash-recovery/crash-recovery.py telepathy-mission-control-5.16.3/tests/twisted/crash-recovery/crash-recovery.py
+--- telepathy-mission-control-5.16.3.orig/tests/twisted/crash-recovery/crash-recovery.py	2015-04-09 18:06:39.023209202 +0200
++++ telepathy-mission-control-5.16.3/tests/twisted/crash-recovery/crash-recovery.py	2015-04-09 18:41:24.815345674 +0200
+@@ -126,5 +126,6 @@ def test(q, bus, unused, **kwargs):
      q.dbus_return(e.message, signature='')
  
  if __name__ == '__main__':
 +    raise SystemExit(77)
-     preseed()
-     exec_test(test, {}, preload_mc=False)
+     exec_test(test, {}, preload_mc=False, use_fake_accounts_service=True,
+             pass_kwargs=True)

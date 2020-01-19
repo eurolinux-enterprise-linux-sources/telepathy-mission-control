@@ -80,7 +80,6 @@ struct _McdChannelPrivate
 enum _McdChannelSignalType
 {
     STATUS_CHANGED,
-    MEMBERS_ACCEPTED,
     LAST_SIGNAL
 };
 
@@ -120,8 +119,6 @@ on_channel_ready (GObject *source_object, GAsyncResult *result, gpointer user_da
 {
     TpChannel *tp_chan = TP_CHANNEL (source_object);
     McdChannel *channel, **channel_ptr = user_data;
-    McdChannelPrivate *priv;
-    gboolean requested, valid;
     GError *error = NULL;
 
     if (!tp_proxy_prepare_finish (tp_chan, result, &error))
@@ -145,12 +142,7 @@ on_channel_ready (GObject *source_object, GAsyncResult *result, gpointer user_da
     if (!channel) return;
 
     DEBUG ("channel %p is ready", channel);
-    priv = channel->priv;
-    requested = tp_asv_get_boolean
-        (tp_channel_borrow_immutable_properties (tp_chan),
-         TP_IFACE_CHANNEL ".Requested", &valid);
-    if (valid)
-        priv->outgoing = requested;
+    channel->priv->outgoing = tp_channel_get_requested (tp_chan);
 }
 
 void
@@ -217,7 +209,6 @@ static void
 _mcd_channel_setup (McdChannel *channel, McdChannelPrivate *priv)
 {
     McdChannel **channel_ptr;
-    GHashTable *properties;
 
     channel_ptr = g_slice_alloc (sizeof (McdChannel *));
     *channel_ptr = channel;
@@ -227,15 +218,7 @@ _mcd_channel_setup (McdChannel *channel, McdChannelPrivate *priv)
     g_signal_connect (priv->tp_chan, "invalidated",
 		      G_CALLBACK (proxy_destroyed), channel);
 
-    properties = tp_channel_borrow_immutable_properties (priv->tp_chan);
-    if (properties)
-    {
-        gboolean requested, valid = FALSE;
-        requested = tp_asv_get_boolean
-            (properties, TP_IFACE_CHANNEL ".Requested", &valid);
-        if (valid)
-            priv->outgoing = requested;
-    }
+    priv->outgoing = tp_channel_get_requested (priv->tp_chan);
 }
 
 static void
@@ -620,9 +603,10 @@ mcd_channel_new_from_properties (TpConnection *connection,
     TpChannel *tp_chan;
     GError *error = NULL;
 
+    tp_chan = tp_simple_client_factory_ensure_channel (
+        tp_proxy_get_factory (connection), connection, object_path,
+        properties, &error);
 
-    tp_chan = tp_channel_new_from_properties (connection, object_path,
-                                              properties, &error);
     if (G_UNLIKELY (error))
     {
         g_warning ("%s: got error: %s", G_STRFUNC, error->message);
@@ -705,8 +689,11 @@ _mcd_channel_create_proxy (McdChannel *channel, TpConnection *connection,
     GError *error = NULL;
 
     g_return_val_if_fail (MCD_IS_CHANNEL (channel), FALSE);
-    tp_chan = tp_channel_new_from_properties (connection, object_path,
-                                              properties, &error);
+
+    tp_chan = tp_simple_client_factory_ensure_channel (
+        tp_proxy_get_factory (connection), connection, object_path,
+        properties, &error);
+
     if (G_UNLIKELY (error))
     {
         g_warning ("%s: got error: %s", G_STRFUNC, error->message);
@@ -749,19 +736,19 @@ mcd_channel_get_object_path (McdChannel *channel)
 {
     McdChannelPrivate *priv = MCD_CHANNEL_PRIV (channel);
 
-    return priv->tp_chan ? TP_PROXY (priv->tp_chan)->object_path : NULL;
+    return priv->tp_chan ? tp_proxy_get_object_path (priv->tp_chan) : NULL;
 }
 
 /*
- * _mcd_channel_get_immutable_properties:
+ * mcd_channel_dup_immutable_properties:
  * @channel: the #McdChannel.
  *
- * Returns: the #GHashTable of the immutable properties.
+ * Returns: the %G_VARIANT_TYPE_VARDICT of the immutable properties.
  */
-GHashTable *
-_mcd_channel_get_immutable_properties (McdChannel *channel)
+GVariant *
+mcd_channel_dup_immutable_properties (McdChannel *channel)
 {
-    GHashTable *ret;
+    GVariant *ret;
 
     g_return_val_if_fail (MCD_IS_CHANNEL (channel), NULL);
 
@@ -771,7 +758,7 @@ _mcd_channel_get_immutable_properties (McdChannel *channel)
         return NULL;
     }
 
-    ret = tp_channel_borrow_immutable_properties (channel->priv->tp_chan);
+    ret = tp_channel_dup_immutable_properties (channel->priv->tp_chan);
 
     if (ret == NULL)
     {
@@ -825,7 +812,7 @@ mcd_channel_get_error (McdChannel *channel)
         return priv->error;
 
     if (priv->tp_chan)
-        return TP_PROXY (priv->tp_chan)->invalidated;
+        return tp_proxy_get_invalidated (priv->tp_chan);
 
     return NULL;
 }
@@ -1137,20 +1124,22 @@ mcd_channel_get_tp_channel (McdChannel *channel)
 }
 
 static void
-mcd_channel_depart_cb (TpChannel *channel,
-                       const GError *error,
-                       gpointer data G_GNUC_UNUSED,
-                       GObject *weak_object G_GNUC_UNUSED)
+mcd_channel_depart_cb (GObject *source_object,
+                       GAsyncResult *result,
+                       gpointer data G_GNUC_UNUSED)
 {
-    if (error == NULL)
-    {
-        DEBUG ("successful");
-        return;
-    }
+    GError *error = NULL;
 
-    DEBUG ("failed to depart, calling Close instead: %s %d: %s",
-           g_quark_to_string (error->domain), error->code, error->message);
-    tp_cli_channel_call_close (channel, -1, NULL, NULL, NULL, NULL);
+    /* By this point, TpChannel has already called Close() for us;
+     * we only get an error if that failed. If Close() fails, there's
+     * not a whole lot we can do about it. */
+
+    if (!tp_channel_leave_finish (TP_CHANNEL (source_object), result, &error))
+    {
+        WARNING ("failed to depart, even via Close(): %s %d: %s",
+               g_quark_to_string (error->domain), error->code, error->message);
+        g_error_free (error);
+    }
 }
 
 typedef struct {
@@ -1177,22 +1166,10 @@ mcd_channel_ready_to_depart_cb (GObject *source_object,
         return;
     }
 
-    if (tp_proxy_has_interface_by_id (channel,
-                                      TP_IFACE_QUARK_CHANNEL_INTERFACE_GROUP))
-    {
-        GArray *a = g_array_sized_new (FALSE, FALSE, sizeof (guint), 1);
-        guint self_handle = tp_channel_group_get_self_handle (channel);
-
-        g_array_append_val (a, self_handle);
-
-        tp_cli_channel_interface_group_call_remove_members_with_reason (
-            channel, -1, a, d->message, d->reason,
-            mcd_channel_depart_cb, NULL, NULL, NULL);
-
-        g_array_unref (a);
-        g_free (d->message);
-        g_slice_free (DepartData, d);
-    }
+    /* If it's a Group, this will leave gracefully.
+     * If not, it will just close it. Either's good. */
+    tp_channel_leave_async (channel, d->reason, d->message,
+                            mcd_channel_depart_cb, NULL);
 }
 
 void
@@ -1202,6 +1179,7 @@ _mcd_channel_depart (McdChannel *channel,
 {
     DepartData *d;
     const GError *invalidated;
+    GQuark just_group_feature[] = { TP_CHANNEL_FEATURE_GROUP, 0 };
 
     g_return_if_fail (MCD_IS_CHANNEL (channel));
 
@@ -1220,8 +1198,7 @@ _mcd_channel_depart (McdChannel *channel,
     if (message[0] == '\0' && reason == TP_CHANNEL_GROUP_CHANGE_REASON_NONE)
     {
         /* exactly equivalent to Close(), so skip the Group interface */
-        tp_cli_channel_call_close (channel->priv->tp_chan, -1,
-                                   NULL, NULL, NULL, NULL);
+        tp_channel_close_async (channel->priv->tp_chan, NULL, NULL);
         return;
     }
 
@@ -1229,7 +1206,9 @@ _mcd_channel_depart (McdChannel *channel,
     d->reason = reason;
     d->message = g_strdup (message);
 
-    tp_proxy_prepare_async (channel->priv->tp_chan, NULL,
+    /* tp_channel_leave_async documents calling it without first preparing
+     * GROUP as deprecated. */
+    tp_proxy_prepare_async (channel->priv->tp_chan, just_group_feature,
                             mcd_channel_ready_to_depart_cb, d);
 }
 

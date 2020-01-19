@@ -10,18 +10,14 @@ INCLUDES = \
 
 AM_CFLAGS = $(ERROR_CFLAGS)
 
-if ENABLE_GNOME_KEYRING
-INCLUDES += $(GNOME_KEYRING_CFLAGS)
-endif
-
 SUBDIRS = . twisted
 
-TEST_EXECUTABLES = test-value-is-same
-NON_TEST_EXECUTABLES = account-store tease-the-minotaur
+TEST_EXECUTABLES = \
+	test-keyfile \
+	test-value-is-same \
+	$(NULL)
 
-if ENABLE_GNOME_KEYRING
-NON_TEST_EXECUTABLES += keyring-command
-endif
+NON_TEST_EXECUTABLES = account-store tease-the-minotaur
 
 noinst_PROGRAMS = $(TEST_EXECUTABLES) $(NON_TEST_EXECUTABLES)
 
@@ -32,6 +28,9 @@ TESTS = $(TEST_EXECUTABLES)
 test_value_is_same_SOURCES = value-is-same.c
 test_value_is_same_LDADD = $(top_builddir)/src/libmcd-convenience.la
 
+test_keyfile_SOURCES = keyfile.c
+test_keyfile_LDADD = $(top_builddir)/src/libmcd-convenience.la
+
 tease_the_minotaur_SOURCES = tease-the-minotaur.c
 tease_the_minotaur_LDADD = $(top_builddir)/src/libmcd-convenience.la
 
@@ -40,13 +39,6 @@ account_store_SOURCES = \
 	account-store.c \
 	account-store-default.c \
 	account-store-default.h
-
-if ENABLE_GNOME_KEYRING
-account_store_LDADD += $(GNOME_KEYRING_LIBS)
-
-keyring_command_LDADD = $(GLIB_LIBS) $(GNOME_KEYRING_LIBS)
-keyring_command_SOURCES = keyring-command.c
-endif
 
 if ENABLE_LIBACCOUNTS_SSO
 account_store_SOURCES += account-store-libaccounts.c account-store-libaccounts.h

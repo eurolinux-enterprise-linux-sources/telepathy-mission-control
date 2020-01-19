@@ -1,9 +1,10 @@
 dnl Set the version number to e.g. 5.x.y immediately before a release.
 dnl Set the version number to e.g. 5.x.y+ immediately after (this will
 dnl enable -Werror).
-AC_INIT([telepathy-mission-control], [5.14.1])
+AC_INIT([telepathy-mission-control], [5.16.3])
 
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_SRCDIR(Makefile.am)
 AM_INIT_AUTOMAKE([1.9 tar-ustar -Wno-portability])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
@@ -45,9 +46,9 @@ AC_SUBST([MCP_API_VERSION])
 #     set revision to 0
 # else if library source has changed since last release
 #     increment revision
-MCP_LT_CURRENT=4
-MCP_LT_REVISION=2
-MCP_LT_AGE=4
+MCP_LT_CURRENT=5
+MCP_LT_REVISION=1
+MCP_LT_AGE=5
 AC_SUBST([MCP_LT_CURRENT])
 AC_SUBST([MCP_LT_REVISION])
 AC_SUBST([MCP_LT_AGE])
@@ -83,7 +84,7 @@ if test -z "$XSLTPROC"; then
     AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
 
-AM_PATH_PYTHON([2.5])
+AM_PATH_PYTHON([2.6])
 AC_MSG_CHECKING([for enough Python for the tests])
 mc_want_twisted_tests=no
 if $PYTHON -c "import twisted.internet.reactor, dbus.mainloop.glib"\
@@ -174,39 +175,7 @@ AC_ARG_ENABLE(aegis,
 
 AM_CONDITIONAL(ENABLE_AEGIS, [test x$aegis_enabled = xyes])
 
-keyring_enabled="no"
-AC_MSG_CHECKING(whether to build with gnome-keyring support)
-AC_ARG_ENABLE(gnome-keyring,
-        [ --enable-gnome-keyring    build with gnome-keyring support. default=no],
-        [
-                AC_MSG_RESULT(${enableval})
-                keyring_enabled="${enableval}"
-        ],
-        [
-                AC_MSG_RESULT(no)
-                keyring_enabled="no"
-        ]
-)
-
 PKG_PROG_PKG_CONFIG()
-
-if test "x$keyring_enabled" = xauto
-then
-    PKG_CHECK_EXISTS([gnome-keyring-1], [keyring_enabled=yes],
-                     [keyring_enabled=no])
-fi
-
-AM_CONDITIONAL(ENABLE_GNOME_KEYRING, [test x$keyring_enabled = xyes])
-
-if test "x$keyring_enabled" = xyes
-then
-  PKG_CHECK_MODULES([GNOME_KEYRING], [gnome-keyring-1])
-  AC_SUBST([GNOME_KEYRING_LIBS])
-  AC_SUBST([GNOME_KEYRING_CFLAGS])
-  AC_DEFINE([ENABLE_GNOME_KEYRING], [1], [Define whether gnome-keyring support is enabled])
-else
-  AC_DEFINE([ENABLE_GNOME_KEYRING], [0], [Define whether gnome-keyring support is enabled])
-fi
 
 dnl libaccounts-glib SSO
 libaccounts_sso_enabled="no"
@@ -257,19 +226,27 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.95, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES([TELEPATHY], [telepathy-glib >= 0.19.0])
+PKG_CHECK_MODULES([TELEPATHY], [telepathy-glib >= 0.20.0])
 AC_DEFINE([TP_VERSION_MIN_REQUIRED], [TP_VERSION_0_18],
   [Ignore post-0.18 deprecations])
 AC_DEFINE([TP_VERSION_MAX_ALLOWED], [TP_VERSION_0_20],
   [Prevent post-0.20 APIs])
+AC_DEFINE([TP_SEAL_ENABLE], [], [Define to hide deprecated struct fields])
+AC_DEFINE([TP_DISABLE_SINGLE_INCLUDE], [], [Avoid individual headers])
 
 PKG_CHECK_MODULES([GLIB],
-	[glib-2.0 >= 2.30, gobject-2.0, gmodule-no-export-2.0, gio-2.0])
-AC_SUBST(GLIB_LIBS)
-AC_SUBST(GLIB_CFLAGS)
+	[glib-2.0 >= 2.32, gobject-2.0, gmodule-no-export-2.0, gio-2.0])
+
+PKG_CHECK_MODULES([GIO_UNIX], [gio-unix-2.0],
+  [
+  AC_DEFINE(HAVE_GIO_UNIX, [], [Define if GIO-Unix is available])
+  GLIB_CFLAGS="$GLIB_CFLAGS $GIO_UNIX_CFLAGS"
+  GLIB_LIBS="$GLIB_LIBS $GIO_UNIX_LIBS"
+  ],
+  [])
 
 AC_DEFINE([GLIB_VERSION_MIN_REQUIRED], [GLIB_VERSION_2_30], [Ignore post 2.30 deprecations])
-AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [GLIB_VERSION_2_30], [Prevent post 2.30 APIs])
+AC_DEFINE([GLIB_VERSION_MAX_ALLOWED], [GLIB_VERSION_2_32], [Prevent post 2.32 APIs])
 
 dnl Check for MCE, a Maemo service used to determine when the device is idle.
 PKG_CHECK_MODULES([MCE], mce >= 1.5, [HAVE_MCE=yes], [HAVE_MCE=no])
@@ -282,29 +259,15 @@ fi
 # Connectivity integration
 # -----------------------------------------------------------
 AC_ARG_WITH(connectivity,
-              AS_HELP_STRING([--with-connectivity=@<:@nm/connman/auto/no@:>@],
+              AS_HELP_STRING([--with-connectivity=@<:@nm/auto/no@:>@],
                              [build with connectivity support]), ,
                              with_connectivity=auto)
 
-if test "x$with_connectivity" = "xno"; then
+# --with-connectivity=connman always used to turn off NM support,
+# so treat it as "no" now that ConnMan doesn't need anything special.
+if test "x$with_connectivity" = "xno" || test "x$with_connectivity" = "xconnman"; then
    have_nm=no
-   have_connman=no
-
-elif test "x$with_connectivity" = "xconnman"; then
-   have_nm=no
-
-   PKG_CHECK_MODULES(CONNMAN,
-   [
-      dbus-glib-1
-   ], have_connman="yes", have_connman="no")
-
-   if test "x$have_connman" = "xyes"; then
-      AC_DEFINE(HAVE_CONNMAN, 1, [Define if you have connman dependencies])
-   fi
-
 else
-   have_connman=no
-
    PKG_CHECK_MODULES(NETWORK_MANAGER,
    [
       libnm-glib >= 0.7.0
@@ -315,12 +278,6 @@ else
    fi
 fi
 
-if test "x$with_connectivity" = "xconnman" -a "x$have_connman" != "xyes"; then
-   AC_MSG_ERROR([Couldn't find connman dependencies:
-
-$CONNMAN_PKG_ERRORS])
-fi
-
 if test "x$with_connectivity" = "xnm" -a "x$have_nm" != "xyes"; then
    AC_MSG_ERROR([Couldn't find Network Manager dependencies:
 
@@ -328,7 +285,6 @@ $NETWORK_MANAGER_PKG_ERRORS])
 fi
 
 AM_CONDITIONAL(HAVE_NM, test "x$have_nm" = "xyes")
-AM_CONDITIONAL(HAVE_CONNMAN, test "x$have_connman" = "xyes")
 
 AC_ARG_ENABLE([conn-setting],
     [AS_HELP_STRING([--enable-conn-setting],
@@ -420,7 +376,6 @@ Configure summary:
 
     Features:
         Plugin API documentation.....:  ${enable_gtk_doc}
-        Gnome Keyring................:  ${keyring_enabled}
         Network Manager integration..:  ${have_nm}
         ConnMan integration..........:  ${have_connman}
         Connectivity GSetting........:  ${enable_conn_setting}

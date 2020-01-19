@@ -1,10 +1,10 @@
-diff -urNp telepathy-mission-control-5.14.1.orig/tests/twisted/dispatcher/create-at-startup.py telepathy-mission-control-5.14.1/tests/twisted/dispatcher/create-at-startup.py
---- telepathy-mission-control-5.14.1.orig/tests/twisted/dispatcher/create-at-startup.py	2013-09-20 17:18:57.680664248 +0200
-+++ telepathy-mission-control-5.14.1/tests/twisted/dispatcher/create-at-startup.py	2013-09-20 17:54:00.214209194 +0200
-@@ -234,5 +234,6 @@ def test(q, bus, unused):
+diff -urNp telepathy-mission-control-5.16.3.orig/tests/twisted/dispatcher/create-at-startup.py telepathy-mission-control-5.16.3/tests/twisted/dispatcher/create-at-startup.py
+--- telepathy-mission-control-5.16.3.orig/tests/twisted/dispatcher/create-at-startup.py	2015-04-09 18:06:39.026209211 +0200
++++ telepathy-mission-control-5.16.3/tests/twisted/dispatcher/create-at-startup.py	2015-04-09 19:13:40.688744419 +0200
+@@ -236,5 +236,6 @@ def test(q, bus, unused, **kwargs):
      assert len(e.args) == 6
  
  if __name__ == '__main__':
 +    raise SystemExit(77)
-     preseed()
-     exec_test(test, {}, preload_mc=False)
+     exec_test(test, {}, preload_mc=False, use_fake_accounts_service=True,
+             pass_kwargs=True)

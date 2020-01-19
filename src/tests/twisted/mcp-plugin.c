@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#undef MC_DISABLE_DEPRECATED
+#include "config.h"
+
 #include <mission-control-plugins/mission-control-plugins.h>
 
 #include <dbus/dbus.h>
@@ -26,6 +29,8 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/telepathy-glib-dbus.h>
+
+#include "dbus-account-plugin.h"
 
 #define DEBUG g_debug
 
@@ -132,9 +137,11 @@ permission_cb (DBusPendingCall *pc,
         }
       else
         {
+          G_GNUC_BEGIN_IGNORE_DEPRECATIONS
           mcp_dispatch_operation_leave_channels (ctx->dispatch_operation,
               TRUE, TP_CHANNEL_GROUP_CHANGE_REASON_PERMISSION_DENIED,
               "Computer says no");
+          G_GNUC_END_IGNORE_DEPRECATIONS
         }
     }
   else
@@ -507,9 +514,11 @@ test_rejection_plugin_check_cdo (McpDispatchOperationPolicy *policy,
   else if (!tp_strdiff (target_id, "mc.hammer@example.net"))
     {
       DEBUG ("MC Hammer detected, leaving channels when observers have run");
+      G_GNUC_BEGIN_IGNORE_DEPRECATIONS
       mcp_dispatch_operation_leave_channels (dispatch_operation, TRUE,
           TP_CHANNEL_GROUP_CHANGE_REASON_PERMISSION_DENIED,
           "Can't touch this");
+      G_GNUC_END_IGNORE_DEPRECATIONS
     }
 
   g_hash_table_unref (properties);
@@ -582,6 +591,10 @@ mcp_plugin_ref_nth_object (guint n)
 
     case 3:
       return g_object_new (test_no_op_plugin_get_type (),
+          NULL);
+
+    case 4:
+      return g_object_new (test_dbus_account_plugin_get_type (),
           NULL);
 
     default:

@@ -1,0 +1,9 @@
+diff -urNp telepathy-mission-control-5.16.3.orig/tests/twisted/dispatcher/respawn-activatable-observers.py telepathy-mission-control-5.16.3/tests/twisted/dispatcher/respawn-activatable-observers.py
+--- telepathy-mission-control-5.16.3.orig/tests/twisted/dispatcher/respawn-activatable-observers.py	2015-04-09 18:06:39.029209219 +0200
++++ telepathy-mission-control-5.16.3/tests/twisted/dispatcher/respawn-activatable-observers.py	2015-04-09 19:25:38.863486599 +0200
+@@ -232,4 +232,5 @@ def test(q, bus, mc):
+     sync_dbus(bus, q, mc)
+ 
+ if __name__ == '__main__':
++    raise SystemExit(77)
+     exec_test(test, {})

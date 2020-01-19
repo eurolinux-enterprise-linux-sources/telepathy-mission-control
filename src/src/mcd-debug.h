@@ -39,6 +39,8 @@ G_BEGIN_DECLS
 #define DEBUGGING (_mcd_debug_get_level () > 0)
 #define DEBUG(format, ...) \
   mcd_debug ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
+#define WARNING(format, ...) \
+  g_warning ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
 #else /* !defined ENABLE_DEBUG */
 
@@ -46,6 +48,15 @@ G_BEGIN_DECLS
 #define DEBUG(format, ...) do {} while (0)
 
 #endif /* ENABLE_DEBUG */
+
+#define MESSAGE(format, ...) \
+  g_message ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
+#define WARNING(format, ...) \
+  g_warning ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
+#define CRITICAL(format, ...) \
+  g_critical ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
+#define ERROR(format, ...) \
+  g_error ("%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
 extern gint mcd_debug_level;
 
@@ -59,7 +70,7 @@ static inline gint _mcd_debug_get_level (void)
 
 void mcd_debug_print_tree (gpointer obj);
 
-void mcd_debug (const gchar *format, ...);
+void mcd_debug (const gchar *format, ...) G_GNUC_PRINTF (1, 2);
 
 G_END_DECLS
 

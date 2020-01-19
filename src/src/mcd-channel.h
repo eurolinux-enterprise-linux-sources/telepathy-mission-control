@@ -79,13 +79,6 @@ struct _McdChannelClass
     /* signals */
     void (*status_changed_signal) (McdChannel * channel,
 				   McdChannelStatus status);
-    void (*_former_members_accepted_signal) (void);
-    TpDBusPropertiesMixinClass _former_dbus_properties_class;
-    void (*_mc_reserved1) (void);
-    void (*_mc_reserved2) (void);
-    void (*_mc_reserved3) (void);
-    void (*_mc_reserved4) (void);
-    void (*_mc_reserved5) (void);
 };
 
 GType mcd_channel_get_type (void);
@@ -107,6 +100,8 @@ TpChannel *mcd_channel_get_tp_channel (McdChannel *channel);
 
 void mcd_channel_take_error (McdChannel *channel, GError *error);
 const GError *mcd_channel_get_error (McdChannel *channel);
+
+GVariant *mcd_channel_dup_immutable_properties (McdChannel *channel);
 
 G_END_DECLS
 #endif /* MCD_CHANNEL_H */

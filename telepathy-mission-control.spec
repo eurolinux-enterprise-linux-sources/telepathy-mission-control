@@ -1,8 +1,8 @@
 %define tp_glib_ver 0.17.5
 
 Name:           telepathy-mission-control
-Version:        5.14.1
-Release:        8%{?dist}
+Version:        5.16.3
+Release:        2%{?dist}
 Epoch:          1
 Summary:        Central control for Telepathy connection manager
 
@@ -14,25 +14,26 @@ Source0:        http://telepathy.freedesktop.org/releases/%{name}/%{name}-%{vers
 # Fails intermittently on the builder -- possibly broken test cases
 Patch0:         %{name}-tests-disable-auto-connect.patch
 Patch1:         %{name}-tests-disable-avatar.patch
-Patch2:         %{name}-tests-disable-avatar-persist.patch
-Patch3:         %{name}-tests-disable-avatar-refresh.patch
-Patch4:         %{name}-tests-disable-crash-recovery.patch
-Patch5:         %{name}-tests-disable-create-at-startup.patch
-Patch6:         %{name}-tests-disable-default-keyring-storage.patch
-Patch7:         %{name}-tests-disable-make-valid.patch
+Patch2:         %{name}-tests-disable-avatar-refresh.patch
+Patch3:         %{name}-tests-disable-crash-recovery.patch
+Patch4:         %{name}-tests-disable-create-at-startup.patch
+Patch5:         %{name}-tests-disable-default-keyring-storage.patch
+Patch6:         %{name}-tests-disable-make-valid.patch
+Patch7:         %{name}-tests-disable-respawn-activatable-observers.patch
 Patch8:         %{name}-tests-disable-vanishing-client.patch
+
+## upstream patches
+# fix failing avatar test, https://bugs.freedesktop.org/show_bug.cgi?id=71001
+Patch0049: 0049-account-manager-avatar.py-fix-race-condition-by-comb.patch
 
 BuildRequires:  chrpath
 BuildRequires:  dbus-python
 BuildRequires:  glib2-devel
-BuildRequires:  gnome-keyring
 BuildRequires:  libxslt-devel
-BuildRequires:  libgnome-keyring-devel
 BuildRequires:  NetworkManager-glib-devel
 BuildRequires:  pygobject2
 BuildRequires:  python-twisted-core
 BuildRequires:  telepathy-glib-devel >= %{tp_glib_ver}
-BuildRequires:  upower-devel
 BuildRequires:  gtk-doc
 
 
@@ -69,10 +70,11 @@ files for developing applications that use %{name}.
 %patch6 -p1
 %patch7 -p1
 %patch8 -p1
+%patch0049 -p1 -b .0049
 
 
 %build
-%configure --disable-static --enable-gnome-keyring --enable-gtk-doc --enable-mcd-plugins --with-connectivity=nm --enable-upower
+%configure --disable-static --enable-gtk-doc --enable-mcd-plugins --with-connectivity=nm --disable-upower
 
 # Omit unused direct shared library dependencies.
 sed --in-place --expression 's! -shared ! -Wl,--as-needed\0!g' libtool
@@ -87,7 +89,7 @@ make install DESTDIR=%{buildroot}
 chrpath --delete %{buildroot}%{_libexecdir}/mission-control-5
 
 # Remove .la files
-find %{buildroot} -name '*.la' -exec rm -f {} ';'
+find %{buildroot} -name '*.la' -delete
 
 
 %check
@@ -125,6 +127,14 @@ fi
 
 
 %changelog
+* Wed May 13 2015 Debarshi Ray <rishi@fedoraproject.org> - 1:5.16.3-2
+- Rebuild for upower soname bump
+- Resolves: #1174525
+
+* Thu Mar 19 2015 Richard Hughes <rhughes@redhat.com> 1:5.16.3-1
+- Update to 5.16.3
+- Resolves: #1174525
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 1:5.14.1-8
 - Mass rebuild 2014-01-24
 

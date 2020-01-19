@@ -35,10 +35,6 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
-#if ENABLE_GNOME_KEYRING
-#include <gnome-keyring.h>
-#endif
-
 #include "mcd-service.h"
 
 TpDBusDaemon *bus_daemon = NULL;
@@ -73,7 +69,7 @@ billy_idle (gpointer user_data)
 {
   DBusMessage *reply = user_data;
   DBusConnection *connection = dbus_g_connection_get_connection (
-      ((TpProxy *) bus_daemon)->dbus_connection);
+      tp_proxy_get_dbus_connection (bus_daemon));
 
   if (!dbus_connection_send (connection, reply, NULL))
     g_error ("Out of memory");
@@ -126,9 +122,23 @@ dbus_filter_function (DBusConnection *connection,
        * drained.
        */
       DBusMessage *reply = dbus_message_new_method_return (message);
+      GVariant *variant;
+      GDBusConnection *system_bus;
 
       if (reply == NULL)
         g_error ("Out of memory");
+
+      /* Sync GDBus, too, to make sure we have received any pending
+       * FakeNetworkMonitor messages. */
+      system_bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
+      g_assert (system_bus != NULL);
+      variant = g_dbus_connection_call_sync (system_bus,
+          "org.freedesktop.DBus", "/org/freedesktop/DBus",
+          "org.freedesktop.DBus", "ListNames",
+          NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL);
+      g_assert (variant != NULL);
+      g_variant_unref (variant);
+      g_object_unref (system_bus);
 
       g_idle_add_full (G_PRIORITY_LOW, billy_idle, reply,
           (GDestroyNotify) dbus_message_unref);
@@ -143,13 +153,11 @@ int
 main (int argc, char **argv)
 {
     GError *error = NULL;
+    GDBusConnection *gdbus = NULL;
     DBusConnection *connection = NULL;
     int ret = 1;
     GMainLoop *teardown_loop;
     guint linger_time = 5;
-#if ENABLE_GNOME_KEYRING
-    GnomeKeyringResult result;
-#endif
 
     g_type_init ();
 
@@ -165,6 +173,18 @@ main (int argc, char **argv)
     g_log_set_fatal_mask ("GLib-GObject",
         G_LOG_FATAL_MASK | G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING);
 
+    gdbus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+
+    if (gdbus == NULL)
+    {
+        g_warning ("%s", error->message);
+        g_error_free (error);
+        error = NULL;
+        goto out;
+    }
+
+    g_dbus_connection_set_exit_on_close (gdbus, FALSE);
+
     bus_daemon = tp_dbus_daemon_dup (&error);
 
     if (bus_daemon == NULL)
@@ -179,27 +199,8 @@ main (int argc, char **argv)
      * DBUS_HANDLER_RESULT_HANDLED for signals, so for *our* filter to have any
      * effect, we need to install it as soon as possible */
     connection = dbus_g_connection_get_connection (
-        ((TpProxy *) bus_daemon)->dbus_connection);
+	tp_proxy_get_dbus_connection (bus_daemon));
     dbus_connection_add_filter (connection, dbus_filter_function, NULL, NULL);
-
-#if ENABLE_GNOME_KEYRING
-    if (g_getenv ("MC_KEYRING_NAME") != NULL)
-    {
-        const gchar *keyring_name = g_getenv ("MC_KEYRING_NAME");
-
-        if ((result = gnome_keyring_set_default_keyring_sync (keyring_name)) ==
-             GNOME_KEYRING_RESULT_OK)
-        {
-            g_debug ("Successfully set up temporary keyring %s for tests",
-                     keyring_name);
-        }
-        else
-        {
-            g_warning ("Failed to set %s as the default keyring: %s",
-                       keyring_name, gnome_keyring_result_to_message (result));
-        }
-    }
-#endif
 
     mcd = mcd_service_new ();
 
@@ -236,6 +237,7 @@ out:
         dbus_connection_flush (connection);
     }
 
+    tp_clear_object (&gdbus);
     tp_clear_object (&bus_daemon);
 
     dbus_shutdown ();

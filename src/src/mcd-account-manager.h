@@ -27,6 +27,7 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include "mission-control-plugins/mission-control-plugins.h"
 #include "mcd-storage.h"
+#include "connectivity-monitor.h"
 
 G_BEGIN_DECLS
 #define MCD_TYPE_ACCOUNT_MANAGER         (mcd_account_manager_get_type ())
@@ -59,7 +60,8 @@ struct _McdAccountManagerClass
 };
 
 GType mcd_account_manager_get_type (void);
-McdAccountManager *mcd_account_manager_new (TpDBusDaemon *dbus_daemon);
+McdAccountManager *mcd_account_manager_new (
+    TpSimpleClientFactory *client_factory);
 
 TpDBusDaemon *mcd_account_manager_get_dbus_daemon
     (McdAccountManager *account_manager);
@@ -79,6 +81,9 @@ McdAccount *mcd_account_manager_lookup_account_by_path (McdAccountManager *accou
 						       	const gchar *object_path);
 
 McdStorage *mcd_account_manager_get_storage (McdAccountManager *manager);
+
+McdConnectivityMonitor *mcd_account_manager_get_connectivity_monitor (
+    McdAccountManager *self);
 
 G_END_DECLS
 

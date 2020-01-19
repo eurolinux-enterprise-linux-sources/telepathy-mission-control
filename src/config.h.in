@@ -15,26 +15,23 @@
 /* Define to use the "use-conn" GSetting */
 #undef ENABLE_CONN_SETTING
 
-/* Define whether gnome-keyring support is enabled */
-#undef ENABLE_GNOME_KEYRING
-
 /* Make tests installable */
 #undef ENABLE_INSTALLED_TESTS
 
 /* Define if libaccounts SSO support is required */
 #undef ENABLE_LIBACCOUNTS_SSO
 
-/* Prevent post 2.30 APIs */
+/* Prevent post 2.32 APIs */
 #undef GLIB_VERSION_MAX_ALLOWED
 
 /* Ignore post 2.30 deprecations */
 #undef GLIB_VERSION_MIN_REQUIRED
 
-/* Define if you have connman dependencies */
-#undef HAVE_CONNMAN
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
+
+/* Define if GIO-Unix is available */
+#undef HAVE_GIO_UNIX
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -105,6 +102,12 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* Avoid individual headers */
+#undef TP_DISABLE_SINGLE_INCLUDE
+
+/* Define to hide deprecated struct fields */
+#undef TP_SEAL_ENABLE
 
 /* Prevent post-0.20 APIs */
 #undef TP_VERSION_MAX_ALLOWED
